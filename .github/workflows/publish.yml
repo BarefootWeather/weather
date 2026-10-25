@@ -3,7 +3,7 @@ name: Collect weather and publish public dashboard
 on:
   workflow_dispatch:
   schedule:
-    - cron: '1/5 * * * *'
+    - cron: '7,22,37,52 * * * *'
   push:
     branches: [main]
     paths: ['.github/workflows/publish.yml']
