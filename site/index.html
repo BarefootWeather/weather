@@ -44,10 +44,11 @@
       <section class="board chart-card">
         <div class="section-heading chart-heading">
           <div><p class="eyebrow">02 / VERIFIED HISTORY</p><h2>Predicted vs. measured</h2><p class="subtle">A forecast captured in advance, against the station reading at that same hour.</p></div>
-          <label class="source-picker">FORECAST SOURCE<select id="source"></select></label>
+          <label class="source-picker">FORECAST SOURCE<select id="source" aria-describedby="provider-note" disabled><option value="">Loading forecast sources…</option></select></label>
         </div>
         <div class="chart-legend"><span><i class="key measured"></i>Actual station observation</span><span><i class="key predicted"></i>Archived forecast</span></div>
-        <div class="plot" id="chart-wrap"><svg id="chart" viewBox="0 0 960 300" role="img" aria-label="Observed versus predicted data" preserveAspectRatio="none"></svg><p class="empty-chart" id="empty-chart">Collecting forecast and observation history...</p></div>
+        <p id="provider-note" class="note provider-note" aria-live="polite"></p>
+        <div class="plot" id="chart-wrap"><svg id="chart" viewBox="0 0 960 300" role="img" aria-label="Observed versus predicted data" preserveAspectRatio="none"></svg><p class="empty-chart" id="empty-chart">Loading forecast sources…</p></div>
       </section>
       <section class="board">
         <div class="section-heading"><div><p class="eyebrow">03 / DATA SOURCES</p><h2>Collector health</h2><p class="subtle">Collection errors are shown here. Credentials are stored in GitHub Actions secrets.</p></div></div>
