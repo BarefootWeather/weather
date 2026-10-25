@@ -251,7 +251,11 @@ function drawChart() {
       : state === 'Waiting for first update'
         ? 'We’re still waiting for this source’s first forecast.'
         : rainfall
-          ? 'We’re saving hourly rain forecasts. Comparisons will appear after those hours pass and the station has a complete rain history.'
+          ? currentData.observation_status === 'hour_boundaries_unavailable'
+            ? 'We’re saving rain forecasts, but the station’s rain archive has no readings at the hour boundaries needed to compare them. Daily rainfall and the reported rate, when available, are shown above.'
+            : currentData.observation_status === 'incomplete_history'
+              ? 'The station’s rain archive is missing complete matching hours. Daily rainfall and the reported rate, when available, are shown above.'
+              : 'We’re saving hourly rain forecasts. Comparisons will appear after those hours pass and the station has a complete rain history.'
           : collectingMessage;
     return;
   }
