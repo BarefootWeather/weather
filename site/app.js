@@ -38,7 +38,7 @@ function healthCard(item) {
   return box;
 }
 async function json(path) {
-  const response = await fetch(path, { cache: 'no-store' });
+  const response = await fetch(`${path}?t=${Date.now()}`, { cache: 'no-store' });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return await response.json();
 }
