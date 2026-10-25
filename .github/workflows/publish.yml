@@ -93,7 +93,7 @@ jobs:
           SITE_NAME: Firestone, CO Weather Lab
           DB_PATH: data/weather.sqlite3
         run: |
-          if ! python -m scripts.collect_and_build --exclude-forecasts-before 1792947515 --force-forecasts > "$RUNNER_TEMP/collector-build.log" 2>&1; then
+          if ! python -m scripts.collect_and_build > "$RUNNER_TEMP/collector-build.log" 2>&1; then
             echo 'Weather collection or export failed. Private diagnostics were not published.'
             exit 1
           fi
