@@ -90,7 +90,7 @@ jobs:
           LATITUDE: ${{ secrets.LATITUDE }}
           LONGITUDE: ${{ secrets.LONGITUDE }}
           NWS_CONTACT: ${{ secrets.NWS_CONTACT }}
-          SITE_NAME: Firestone, CO Weather Lab
+          SITE_NAME: Firestone, Colorado
           DB_PATH: data/weather.sqlite3
         run: |
           if ! python -m scripts.collect_and_build > "$RUNNER_TEMP/collector-build.log" 2>&1; then
