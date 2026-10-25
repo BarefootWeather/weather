@@ -4,57 +4,58 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0a111a" />
-  <title>Hyperlocal · Forecast Accuracy</title>
+  <title>Barefoot Weather · Firestone, Colorado</title>
+  <meta name="description" content="Our family's weather station in Firestone, Colorado, with local readings and a look at how the forecasts compare." />
   <link rel="stylesheet" href="./style.css" />
   <script src="./app.js" defer></script>
 </head>
 <body>
   <div class="shell">
     <header class="site-header">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">◉</span><span>HYPERLOCAL <strong>/ FORECAST LAB</strong></span></div>
-      <span class="live-indicator"><span class="pulse"></span><span id="status-label">Connecting…</span></span>
+      <div class="brand"><span class="brand-mark" aria-hidden="true">◉</span><span>BAREFOOT <strong>WEATHER</strong></span></div>
+      <span class="live-indicator"><span class="pulse"></span><span id="status-label">Checking for a reading…</span></span>
     </header>
     <main>
       <section class="hero">
-        <p class="eyebrow">COMMUNITY WEATHER INTELLIGENCE</p>
-        <h1>Which forecast gets<br/><em>your backyard</em> right?</h1>
-        <p class="subtitle">Actual measurements from your weather station. Forecast snapshots from competing weather models. No hindsight.</p>
-        <div class="site-line"><span class="pin">⌖</span><span id="site-name">Weather station</span><span class="mid-dot">·</span><span id="last-seen">Waiting for first observation</span></div>
+        <p class="eyebrow">FIRESTONE, COLORADO</p>
+        <h1>Our family’s<br/><em>weather station.</em></h1>
+        <p class="subtitle">We keep an eye on the temperature, wind and rain here at home, and see how the forecasts compare with what our station measures.</p>
+        <div class="site-line"><span class="pin">⌖</span><span id="site-name">Firestone, Colorado</span><span class="mid-dot">·</span><span id="last-seen">Waiting for our first reading</span></div>
       </section>
-      <section id="demo-banner" class="demo-banner" hidden><strong>SIMULATED DEMO DATA.</strong> These measurements and rankings are illustrative, not readings from your WS90.</section>
-      <section class="stat-grid" aria-label="Weather station observations">
-        <article class="stat"><div class="stat-label">OUTDOOR TEMPERATURE</div><div class="stat-reading"><strong id="current-temp">—</strong><span>°F</span></div><div class="stat-foot">Ecowitt observation</div></article>
-        <article class="stat"><div class="stat-label">RELATIVE HUMIDITY</div><div class="stat-reading"><strong id="current-humidity">—</strong><span>%</span></div><div class="stat-foot">Ecowitt observation</div></article>
-        <article class="stat"><div class="stat-label">WIND SPEED</div><div class="stat-reading"><strong id="current-wind">—</strong><span>mph</span></div><div class="stat-foot">Ecowitt observation</div></article>
-        <article class="stat"><div class="stat-label">DAILY RAINFALL</div><div class="stat-reading"><strong id="current-rain">—</strong><span>in</span></div><div class="stat-foot" id="rain-period">Station day total</div><div class="stat-foot" id="rain-rate">Awaiting rainfall reading</div></article>
+      <section id="demo-banner" class="demo-banner" hidden><strong>DEMO READINGS.</strong> These sample readings and results are made up so you can look around. They aren’t from our station.</section>
+      <section class="stat-grid" aria-label="Readings from our weather station">
+        <article class="stat"><div class="stat-label">TEMPERATURE</div><div class="stat-reading"><strong id="current-temp">—</strong><span>°F</span></div><div class="stat-foot">From our station</div></article>
+        <article class="stat"><div class="stat-label">HUMIDITY</div><div class="stat-reading"><strong id="current-humidity">—</strong><span>%</span></div><div class="stat-foot">From our station</div></article>
+        <article class="stat"><div class="stat-label">WIND</div><div class="stat-reading"><strong id="current-wind">—</strong><span>mph</span></div><div class="stat-foot">From our station</div></article>
+        <article class="stat"><div class="stat-label">DAILY RAINFALL</div><div class="stat-reading"><strong id="current-rain">—</strong><span>in</span></div><div class="stat-foot" id="rain-period">Station day total</div><div class="stat-foot" id="rain-rate">Waiting for a rainfall reading</div></article>
       </section>
       <section class="board">
         <div class="section-heading">
-          <div><p class="eyebrow">01 / MODEL SCORECARD</p><h2>Forecast leaderboard</h2><p class="subtle">Mean absolute error (MAE). Lower is better. Only identical verified hours are compared.</p></div>
+          <div><p class="eyebrow">THE FORECASTS</p><h2>How the forecasts compare</h2><p class="subtle">Each forecast is checked against the same hours from our station. A smaller average miss is better.</p></div>
           <form class="filters" id="filters">
-            <label>MEASUREMENT<select id="metric"><option value="temperature_f">Temperature</option><option value="humidity_pct">Humidity</option><option value="wind_mph">Wind speed</option></select></label>
-            <label>LEAD TIME<select id="horizon"><option value="0-6">0–6 hours</option><option value="6-12" selected>6–12 hours</option><option value="12-24">12–24 hours</option><option value="24-48">24–48 hours</option><option value="48-72">48–72 hours</option></select></label>
-            <label>LOOKBACK<select id="days"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select></label>
+            <label>WEATHER<select id="metric"><option value="temperature_f">Temperature</option><option value="humidity_pct">Humidity</option><option value="wind_mph">Wind speed</option></select></label>
+            <label>HOW FAR AHEAD<select id="horizon"><option value="0-6">0–6 hours</option><option value="6-12" selected>6–12 hours</option><option value="12-24">12–24 hours</option><option value="24-48">24–48 hours</option><option value="48-72">48–72 hours</option></select></label>
+            <label>OVER THE PAST<select id="days"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select></label>
           </form>
         </div>
-        <div class="rank-meta"><div><span id="match-count">Loading scorecard…</span><div class="archive-counts"><span id="obs-count">—</span> station observations · <span id="snapshot-count">— forecast rows archived</span></div></div><span class="method-pill">TIMESTAMP-MATCHED</span></div>
-        <div class="table-scroll"><table aria-label="Forecast verification results"><thead><tr><th>RANK</th><th>FORECAST SOURCE</th><th>MAE <span id="mae-unit"></span></th><th>BIAS</th><th>RMSE</th><th>SHARED HOURS</th></tr></thead><tbody id="leaderboard"><tr><td colspan="6">Collecting data…</td></tr></tbody></table></div>
+        <div class="rank-meta"><div><span id="match-count">Loading the comparisons…</span><div class="archive-counts"><span id="obs-count">—</span> station readings · <span id="snapshot-count">— hourly forecast entries saved</span></div></div><span class="method-pill">SAME HOURS</span></div>
+        <div class="table-scroll"><table aria-label="How the forecasts compare"><thead><tr><th>RANK</th><th>FORECAST</th><th title="Mean absolute error: the average size of each miss">AVG. MISS <span id="mae-unit"></span></th><th title="Average bias: positive means too high, negative means too low">HIGH / LOW</th><th title="Root mean square error: gives more weight to larger misses">RMSE</th><th>HOURS COMPARED</th></tr></thead><tbody id="leaderboard"><tr><td colspan="6">Building up some weather history…</td></tr></tbody></table></div>
         <p id="leaderboard-note" class="note"></p>
       </section>
       <section class="board chart-card">
         <div class="section-heading chart-heading">
-          <div><p class="eyebrow">02 / VERIFIED HISTORY</p><h2>Predicted vs. measured</h2><p class="subtle">A forecast captured in advance, against the station reading at that same hour.</p></div>
-          <label class="source-picker">FORECAST SOURCE<select id="source" aria-describedby="provider-note" disabled><option value="">Loading forecast sources…</option></select></label>
+          <div><p class="eyebrow">LOOKING BACK</p><h2>Forecasts and what happened</h2><p class="subtle">What the forecast said ahead of time, alongside what our station measured.</p></div>
+          <label class="source-picker">FORECAST<select id="source" aria-describedby="provider-note" disabled><option value="">Loading the forecasts…</option></select></label>
         </div>
-        <div class="chart-legend"><span><i class="key measured"></i>Actual station observation</span><span><i class="key predicted"></i>Archived forecast</span></div>
+        <div class="chart-legend"><span><i class="key measured"></i>Our station</span><span><i class="key predicted"></i>The saved forecast</span></div>
         <p id="provider-note" class="note provider-note" aria-live="polite"></p>
-        <div class="plot" id="chart-wrap"><svg id="chart" viewBox="0 0 960 300" role="img" aria-label="Observed versus predicted data" preserveAspectRatio="none"></svg><p class="empty-chart" id="empty-chart">Loading forecast sources…</p></div>
+        <div class="plot" id="chart-wrap"><svg id="chart" viewBox="0 0 960 300" role="img" aria-label="Our station readings compared with the saved forecast" preserveAspectRatio="none"></svg><p class="empty-chart" id="empty-chart">Loading the forecasts…</p></div>
       </section>
       <section class="board">
-        <div class="section-heading"><div><p class="eyebrow">03 / DATA SOURCES</p><h2>Collector health</h2><p class="subtle">Collection errors are shown here. Credentials are stored in GitHub Actions secrets.</p></div></div>
+        <div class="section-heading"><div><p class="eyebrow">KEEPING IN TOUCH</p><h2>Latest updates</h2><p class="subtle">When we last heard from our station and each forecast source.</p></div></div>
         <div id="source-health" class="health-grid"></div>
       </section>
-      <footer><span>HYPERLOCAL FORECAST LAB · PUBLIC WEATHER PROJECT</span><span>Weather data: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>), compared with station measurements · Official NWS data: <a href="https://www.weather.gov/" target="_blank" rel="noopener noreferrer">weather.gov</a></span></footer>
+      <footer><span>A family weather station in Firestone, Colorado.</span><span>Forecasts: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>) and the <a href="https://www.weather.gov/" target="_blank" rel="noopener noreferrer">National Weather Service</a> · Readings from our station</span></footer>
     </main>
   </div>
 </body>
