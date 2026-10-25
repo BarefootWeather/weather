@@ -68,6 +68,9 @@ async function loadStatus() {
   byId('current-temp').textContent = value(o.temperature_f);
   byId('current-humidity').textContent = value(o.humidity_pct, 0);
   byId('current-wind').textContent = value(o.wind_mph);
+  byId('current-rain').textContent = value(o.rain_daily_in, 2);
+  byId('rain-period').textContent = o.rain_daily_in == null ? 'Daily total unavailable' : 'Station day total';
+  byId('rain-rate').textContent = o.rain_rate_in_hr == null ? 'Reported rate unavailable' : `Reported rate: ${value(o.rain_rate_in_hr, 2)} in/hr`;
   byId('obs-count').textContent = Number(s.counts.observations).toLocaleString();
   byId('snapshot-count').textContent = `${Number(s.counts.forecasts).toLocaleString()} forecast rows archived`;
   byId('last-seen').textContent = isoAge(o.observed_at);

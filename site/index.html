@@ -26,7 +26,7 @@
         <article class="stat"><div class="stat-label">OUTDOOR TEMPERATURE</div><div class="stat-reading"><strong id="current-temp">—</strong><span>°F</span></div><div class="stat-foot">Ecowitt observation</div></article>
         <article class="stat"><div class="stat-label">RELATIVE HUMIDITY</div><div class="stat-reading"><strong id="current-humidity">—</strong><span>%</span></div><div class="stat-foot">Ecowitt observation</div></article>
         <article class="stat"><div class="stat-label">WIND SPEED</div><div class="stat-reading"><strong id="current-wind">—</strong><span>mph</span></div><div class="stat-foot">Ecowitt observation</div></article>
-        <article class="stat"><div class="stat-label">VERIFICATION DATA</div><div class="stat-reading"><strong id="obs-count">—</strong><span>records</span></div><div class="stat-foot" id="snapshot-count">— forecast rows archived</div></article>
+        <article class="stat"><div class="stat-label">DAILY RAINFALL</div><div class="stat-reading"><strong id="current-rain">—</strong><span>in</span></div><div class="stat-foot" id="rain-period">Station day total</div><div class="stat-foot" id="rain-rate">Awaiting rainfall reading</div></article>
       </section>
       <section class="board">
         <div class="section-heading">
@@ -37,7 +37,7 @@
             <label>LOOKBACK<select id="days"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select></label>
           </form>
         </div>
-        <div class="rank-meta"><span id="match-count">Loading scorecard…</span><span class="method-pill">TIMESTAMP-MATCHED</span></div>
+        <div class="rank-meta"><div><span id="match-count">Loading scorecard…</span><div class="archive-counts"><span id="obs-count">—</span> station observations · <span id="snapshot-count">— forecast rows archived</span></div></div><span class="method-pill">TIMESTAMP-MATCHED</span></div>
         <div class="table-scroll"><table aria-label="Forecast verification results"><thead><tr><th>RANK</th><th>FORECAST SOURCE</th><th>MAE <span id="mae-unit"></span></th><th>BIAS</th><th>RMSE</th><th>SHARED HOURS</th></tr></thead><tbody id="leaderboard"><tr><td colspan="6">Collecting data…</td></tr></tbody></table></div>
         <p id="leaderboard-note" class="note"></p>
       </section>
