@@ -10,6 +10,7 @@ let statusError = false;
 let comparisonLoading = true;
 let comparisonError = '';
 const collectingMessage = 'We’re saving the forecasts as they arrive. Once we have station readings for those same hours, we’ll show how they compare.';
+const rainfallMethodMessage = 'Rain only, not snow. Station amounts are estimates from archived counters; upload timing can differ from measurement timing. Matching counters on either side of an hour boundary let us use that hour without interpolation. Rain in that gap leaves the hour out, so some rainy periods won’t appear. Times mark the hour’s end; forecasts are saved before it starts.';
 
 function when(value) {
   if (value == null) return 'Not yet';
@@ -130,7 +131,7 @@ async function loadComparison() {
   const rainfall = byId('metric').value === 'rain_in';
   byId('measurement-note').hidden = !rainfall;
   byId('measurement-note').textContent = rainfall
-    ? 'Rain only, not snow. Each point covers the hour ending at its label. Station amounts are estimates from archived rain counters; upload timing can differ from measurement timing. Lead times run to the hour’s end, with forecasts saved before it starts.' : '';
+    ? rainfallMethodMessage : '';
   byId('station-legend').textContent = rainfall ? 'Our station (hourly estimate)' : 'Our station';
   byId('chart').setAttribute('aria-label', rainfall ? 'Estimated hourly station rainfall compared with the saved forecast, in inches' : 'Our station readings compared with the saved forecast');
   updateSources();
@@ -155,6 +156,9 @@ async function loadComparison() {
   if (request !== comparisonRequest) return;
   currentData = data;
   comparisonLoading = false;
+  if (data.metric === 'rain_in' && Number.isInteger(data.observation_hours)) {
+    byId('measurement-note').textContent = `${rainfallMethodMessage} ${data.observation_hours} station ${data.observation_hours === 1 ? 'hour has' : 'hours have'} usable rain totals in this period.`;
+  }
   byId('match-count').textContent = data.is_comparable ? `${data.matched_hours} hours compared` : 'Waiting for more matching hours';
   byId('mae-unit').textContent = `(${data.unit})`;
   const body = byId('leaderboard');
@@ -251,10 +255,8 @@ function drawChart() {
       : state === 'Waiting for first update'
         ? 'We’re still waiting for this source’s first forecast.'
         : rainfall
-          ? currentData.observation_status === 'hour_boundaries_unavailable'
-            ? 'We’re saving rain forecasts, but the station’s rain archive has no readings at the hour boundaries needed to compare them. Daily rainfall and the reported rate, when available, are shown above.'
-            : currentData.observation_status === 'incomplete_history'
-              ? 'The station’s rain archive is missing complete matching hours. Daily rainfall and the reported rate, when available, are shown above.'
+          ? ['incomplete_history', 'hour_boundaries_unavailable'].includes(currentData.observation_status)
+              ? 'The rain readings don’t establish a total for these hours yet. Rain near an hour boundary or missing readings can leave a gap. Daily rainfall and the reported rate, when available, are shown above.'
               : 'We’re saving hourly rain forecasts. Comparisons will appear after those hours pass and the station has a complete rain history.'
           : collectingMessage;
     return;
