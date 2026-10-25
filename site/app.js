@@ -3,6 +3,7 @@ const byId = id => document.getElementById(id);
 const controls = ['metric', 'horizon', 'days'];
 let currentData = null;
 let selectedSource = '';
+let comparisonRequest = 0;
 
 function when(value) {
   if (value == null) return 'Never';
@@ -55,8 +56,23 @@ async function loadStatus() {
   if (!s.configured.coordinates && s.mode !== 'demo') health.prepend(elt('p', 'Missing station coordinates in GitHub Actions secrets.', 'health-error'));
 }
 async function loadComparison() {
+  const request = ++comparisonRequest;
   const query = new URLSearchParams(Object.fromEntries(controls.map(id => [id, byId(id).value])));
-  const data = await json('./data/comparisons/' + query.get('metric') + '-' + query.get('horizon') + '-' + query.get('days') + '.json');
+  let data;
+  try {
+    data = await json('./data/comparisons/' + query.get('metric') + '-' + query.get('horizon') + '-' + query.get('days') + '.json');
+  } catch (error) {
+    if (request !== comparisonRequest) return;
+    currentData = null;
+    byId('leaderboard').replaceChildren();
+    byId('match-count').textContent = 'Comparison unavailable';
+    byId('mae-unit').textContent = '';
+    byId('leaderboard-note').textContent = 'Could not load comparison: ' + error.message;
+    byId('source').replaceChildren();
+    drawChart();
+    return;
+  }
+  if (request !== comparisonRequest) return;
   currentData = data;
   byId('match-count').textContent = data.is_comparable ? `${data.matched_hours} matched verified hours in this comparison` : 'Collecting shared verification hours';
   byId('mae-unit').textContent = `(${data.unit})`;
