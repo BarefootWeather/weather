@@ -1,0 +1,31 @@
+name: Qualify private source before merge
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: github-pages
+    steps:
+      - name: Check out private review branch
+        uses: actions/checkout@v6
+        with:
+          repository: BarefootWeather/weather-source
+          ref: b993439fb1af24e13bd9ad2b1d51e2f901d9d1cf
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Require JavaScript test runtime
+        run: node --version
+      - name: Verify all tests without publishing private diagnostics
+        run: |
+          if ! python -m unittest discover -s tests -v > "$RUNNER_TEMP/tests.log" 2>&1; then
+            echo 'Qualification failed. Reproduce privately.'
+            exit 1
+          fi
+          tail -n 4 "$RUNNER_TEMP/tests.log"
