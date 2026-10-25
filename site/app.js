@@ -93,6 +93,7 @@ function sourceResult(provider) {
 }
 function sourceState(provider) {
   const health = sourceHealth(provider);
+  if (currentData?.unsupported_providers?.includes(provider)) return 'No rainfall amounts';
   if (health.last_error) return 'Update failed';
   if (sourceResult(provider)?.rank != null) return 'Ready to compare';
   return health.last_success_at != null ? 'Saving forecasts' : 'Waiting for first update';
@@ -126,6 +127,12 @@ async function loadComparison() {
   byId('mae-unit').textContent = '';
   byId('leaderboard').replaceChildren();
   byId('leaderboard-note').textContent = '';
+  const rainfall = byId('metric').value === 'rain_in';
+  byId('measurement-note').hidden = !rainfall;
+  byId('measurement-note').textContent = rainfall
+    ? 'Rain only, not snow. Each point covers the hour ending at its label. Station amounts are estimates from archived rain counters; upload timing can differ from measurement timing. Lead times run to the hour’s end, with forecasts saved before it starts.' : '';
+  byId('station-legend').textContent = rainfall ? 'Our station (hourly estimate)' : 'Our station';
+  byId('chart').setAttribute('aria-label', rainfall ? 'Estimated hourly station rainfall compared with the saved forecast, in inches' : 'Our station readings compared with the saved forecast');
   updateSources();
   drawChart();
   const query = new URLSearchParams(Object.fromEntries(controls.map(id => [id, byId(id).value])));
@@ -162,10 +169,11 @@ async function loadComparison() {
   data.providers.forEach(result => {
     const row = elt('tr');
     if (result.rank === 1) row.className = 'winner';
+    const digits = data.metric === 'rain_in' ? 3 : 2;
     const values = [result.rank || '—', result.provider,
-      result.mae == null ? '—' : value(result.mae, 2),
-      result.bias == null ? '—' : (result.bias >= 0 ? '+' : '') + value(result.bias, 2),
-      result.rmse == null ? '—' : value(result.rmse, 2),
+      result.mae == null ? '—' : value(result.mae, digits),
+      result.bias == null ? '—' : (result.bias >= 0 ? '+' : '') + value(result.bias, digits),
+      result.rmse == null ? '—' : value(result.rmse, digits),
       result.sample_count || `0 (${result.available_hours} available)`];
     values.forEach((entry, i) => {
       const cell = elt('td', entry);
@@ -178,6 +186,9 @@ async function loadComparison() {
   byId('leaderboard-note').textContent = data.is_comparable
     ? `Based on ${data.matched_hours} of the same station hours. In “High / low”, + means the forecast was too high and − means too low. Short histories can change quickly.`
     : `We need at least ${data.min_samples} matching hours from two or more forecast sources before ranking them. Each forecast is saved ahead of time, then checked against our station.`;
+  if (data.metric === 'rain_in' && data.is_comparable && data.wet_hours === 0) {
+    byId('leaderboard-note').textContent += ' Only dry hours have been compared so far; this doesn’t show how the forecasts handle rain.';
+  }
   updateSources();
   drawChart();
 }
@@ -218,6 +229,17 @@ function drawChart() {
     empty.textContent = 'We couldn’t load the weather history. Please try again later.';
     return;
   }
+  if (currentData?.unsupported_providers?.includes(selectedSource)) {
+    note.textContent = 'This forecast feed doesn’t include rainfall amounts.';
+    empty.textContent = 'Choose another forecast to compare rainfall. You can still use this source for temperature, humidity and wind.';
+    return;
+  }
+  const rainfall = currentData?.metric === 'rain_in';
+  const rainHistoryError = rainfall && sourceHealth('Rainfall history').last_error;
+  if (rainHistoryError) {
+    note.textContent += ' We couldn’t update the station’s rain history. Any earlier complete hours are kept.';
+    note.className += ' health-error';
+  }
   const qualified = sourceResult(selectedSource)?.rank != null;
   const points = qualified
     ? (currentData?.chart || []).filter(p => p.forecasts[selectedSource] != null && p.actual != null)
@@ -228,7 +250,9 @@ function drawChart() {
       ? 'We couldn’t get this forecast’s latest update. A comparison will appear when updates resume and we have station readings for the same hours.'
       : state === 'Waiting for first update'
         ? 'We’re still waiting for this source’s first forecast.'
-        : collectingMessage;
+        : rainfall
+          ? 'We’re saving hourly rain forecasts. Comparisons will appear after those hours pass and the station has a complete rain history.'
+          : collectingMessage;
     return;
   }
   empty.hidden = true;
@@ -238,15 +262,15 @@ function drawChart() {
   const W = 960, H = 300, left = 54, right = 16, top = 20, bottom = 42;
   const all = points.flatMap(p => [p.actual, p.forecast]);
   let min = Math.min(...all), max = Math.max(...all);
-  const pad = Math.max((max - min) * 0.18, currentData.metric === 'humidity_pct' ? 5 : 2);
-  min -= pad; max += pad;
+  const pad = Math.max((max - min) * 0.18, rainfall ? 0.01 : currentData.metric === 'humidity_pct' ? 5 : 2);
+  min = rainfall ? Math.max(0, min - pad) : min - pad; max += pad;
   const start = points[0].valid_at, end = points[points.length - 1].valid_at;
   const x = p => start === end ? (left + W - right) / 2 : left + (p.valid_at - start) / (end - start) * (W - left - right);
   const y = v => top + (max - v) / (max - min) * (H - top - bottom);
   for (let i = 0; i <= 4; i++) {
     const py = top + i * (H - top - bottom) / 4;
     chart.append(svg('line', {x1:left,y1:py,x2:W-right,y2:py,stroke:'#293c4b','stroke-width':1}));
-    chart.append(svg('text', {x:left-12,y:py+4,fill:'#8297a8','font-size':12,'text-anchor':'end'}, (max-(max-min)*i/4).toFixed(1)));
+    chart.append(svg('text', {x:left-12,y:py+4,fill:'#8297a8','font-size':12,'text-anchor':'end'}, (max-(max-min)*i/4).toFixed(rainfall ? 3 : 1)));
   }
   const path = accessor => points.map((p,i) => (i?'L':'M')+x(p).toFixed(1)+','+y(accessor(p)).toFixed(1)).join(' ');
   if (points.length > 1) {

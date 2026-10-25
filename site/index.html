@@ -33,12 +33,13 @@
         <div class="section-heading">
           <div><p class="eyebrow">THE FORECASTS</p><h2>How the forecasts compare</h2><p class="subtle">Each forecast is checked against the same hours from our station. A smaller average miss is better.</p></div>
           <form class="filters" id="filters">
-            <label>WEATHER<select id="metric"><option value="temperature_f">Temperature</option><option value="humidity_pct">Humidity</option><option value="wind_mph">Wind speed</option></select></label>
+            <label>WEATHER<select id="metric"><option value="temperature_f">Temperature</option><option value="humidity_pct">Humidity</option><option value="wind_mph">Wind speed</option><option value="rain_in">Rainfall</option></select></label>
             <label>HOW FAR AHEAD<select id="horizon"><option value="0-6">0–6 hours</option><option value="6-12" selected>6–12 hours</option><option value="12-24">12–24 hours</option><option value="24-48">24–48 hours</option><option value="48-72">48–72 hours</option></select></label>
             <label>OVER THE PAST<select id="days"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select></label>
           </form>
         </div>
         <div class="rank-meta"><div><span id="match-count">Loading the comparisons…</span><div class="archive-counts"><span id="obs-count">—</span> station readings · <span id="snapshot-count">— hourly forecast entries saved</span></div></div><span class="method-pill">SAME HOURS</span></div>
+        <p id="measurement-note" class="note" hidden></p>
         <div class="table-scroll"><table aria-label="How the forecasts compare"><thead><tr><th>RANK</th><th>FORECAST</th><th title="Mean absolute error: the average size of each miss">AVG. MISS <span id="mae-unit"></span></th><th title="Average bias: positive means too high, negative means too low">HIGH / LOW</th><th title="Root mean square error: gives more weight to larger misses">RMSE</th><th>HOURS COMPARED</th></tr></thead><tbody id="leaderboard"><tr><td colspan="6">Building up some weather history…</td></tr></tbody></table></div>
         <p id="leaderboard-note" class="note"></p>
       </section>
@@ -47,7 +48,7 @@
           <div><p class="eyebrow">LOOKING BACK</p><h2>Forecasts and what happened</h2><p class="subtle">What the forecast said ahead of time, alongside what our station measured.</p></div>
           <label class="source-picker">FORECAST<select id="source" aria-describedby="provider-note" disabled><option value="">Loading the forecasts…</option></select></label>
         </div>
-        <div class="chart-legend"><span><i class="key measured"></i>Our station</span><span><i class="key predicted"></i>The saved forecast</span></div>
+        <div class="chart-legend"><span><i class="key measured"></i><span id="station-legend">Our station</span></span><span><i class="key predicted"></i>The saved forecast</span></div>
         <p id="provider-note" class="note provider-note" aria-live="polite"></p>
         <div class="plot" id="chart-wrap"><svg id="chart" viewBox="0 0 960 300" role="img" aria-label="Our station readings compared with the saved forecast" preserveAspectRatio="none"></svg><p class="empty-chart" id="empty-chart">Loading the forecasts…</p></div>
       </section>
