@@ -1,0 +1,137 @@
+name: Collect weather and publish public dashboard
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hyperlocal-weather-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # This workflow belongs in the public site repo, never the private source repo.
+    if: github.event.repository.private == false && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out public site
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          path: public-site
+
+      - name: Require a separate private source repository in the same organization
+        env:
+          SOURCE_REPOSITORY: ${{ vars.SOURCE_REPOSITORY }}
+        run: |
+          python - <<'PY'
+          import os, re, urllib.error, urllib.request
+          source = os.environ.get('SOURCE_REPOSITORY', '')
+          if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+', source):
+              raise SystemExit('Set SOURCE_REPOSITORY to the private owner/repository.')
+          if source.split('/')[0].lower() != os.environ['GITHUB_REPOSITORY_OWNER'].lower():
+              raise SystemExit('Source and site must belong to the same neutral organization.')
+          if source.lower() == os.environ['GITHUB_REPOSITORY'].lower():
+              raise SystemExit('Source and public site must be separate repositories.')
+          # An unauthenticated request must not expose the source repository.
+          request = urllib.request.Request('https://api.github.com/repos/' + source,
+                                           headers={'Accept': 'application/vnd.github+json'})
+          try:
+              urllib.request.urlopen(request, timeout=25).close()
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise SystemExit('Could not establish source repository privacy.') from None
+          else:
+              raise SystemExit('Source repository is public; publication stopped.')
+          PY
+
+      - name: Check out private collector and history
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ vars.SOURCE_REPOSITORY }}
+          ref: main
+          path: source
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+          ssh-strict: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Verify private collector
+        working-directory: source
+        run: |
+          if ! python -m unittest discover -s tests -v > "$RUNNER_TEMP/collector-tests.log" 2>&1; then
+            echo 'Collector tests failed. Reproduce from the private source repository.'
+            exit 1
+          fi
+
+      - name: Fetch readings, score forecasts, export static website
+        working-directory: source
+        env:
+          ECOWITT_APPLICATION_KEY: ${{ secrets.ECOWITT_APPLICATION_KEY }}
+          ECOWITT_API_KEY: ${{ secrets.ECOWITT_API_KEY }}
+          ECOWITT_MAC: ${{ secrets.ECOWITT_MAC }}
+          LATITUDE: ${{ secrets.LATITUDE }}
+          LONGITUDE: ${{ secrets.LONGITUDE }}
+          NWS_CONTACT: ${{ secrets.NWS_CONTACT }}
+          SITE_NAME: Firestone, CO Weather Lab
+          DB_PATH: data/weather.sqlite3
+        run: |
+          if ! python -m scripts.collect_and_build > "$RUNNER_TEMP/collector-build.log" 2>&1; then
+            echo 'Weather collection or export failed. Private diagnostics were not published.'
+            exit 1
+          fi
+
+      - name: Save full history only to the private source repository
+        working-directory: source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- data/weather.sqlite3
+          if ! git diff --cached --quiet; then
+            git commit -m 'data: collect weather observations and forecast snapshots [skip ci]' > "$RUNNER_TEMP/history-commit.log" 2>&1
+            git push origin HEAD:main > "$RUNNER_TEMP/history-push.log" 2>&1
+          fi
+
+      - name: Copy only approved website files
+        working-directory: source
+        run: |
+          if ! python -m scripts.publish_site --source dist --destination ../public-site/site > "$RUNNER_TEMP/site-copy.log" 2>&1; then
+            echo 'Website file validation failed; no private files were published.'
+            exit 1
+          fi
+
+      - name: Save generated public website
+        working-directory: public-site
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- site
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update published weather dashboard [skip ci]'
+            git push origin HEAD:main
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload generated website only
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public-site/site
+          retention-days: 1
+
+      - name: Deploy public site
+        id: deployment
+        uses: actions/deploy-pages@v4
