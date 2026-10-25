@@ -1,0 +1,24 @@
+name: Verify provider coverage without exposing location
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    environment: github-pages
+    steps:
+      - name: Report coverage booleans only
+        env:
+          LATITUDE: ${{ secrets.LATITUDE }}
+          LONGITUDE: ${{ secrets.LONGITUDE }}
+        run: |
+          python3 - <<'PY'
+          import os
+          lat, lon = float(os.environ['LATITUDE']), float(os.environ['LONGITUDE'])
+          print('CONUS provider coverage:', 24 <= lat <= 50 and -125 <= lon <= -66)
+          print('Firestone area:', 39.9 <= lat <= 40.3 and -105.2 <= lon <= -104.7)
+          print('Firestone if longitude sign corrected:', 39.9 <= lat <= 40.3 and -105.2 <= -lon <= -104.7)
+          PY
