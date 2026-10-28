@@ -190,6 +190,7 @@ async function loadComparison() {
   byId('leaderboard-note').textContent = data.is_comparable
     ? `Based on ${data.matched_hours} of the same station hours. In “High / low”, + means the forecast was too high and − means too low. Short histories can change quickly.`
     : `We need at least ${data.min_samples} matching hours from two or more forecast sources before ranking them. Each forecast is saved ahead of time, then checked against our station.`;
+  byId('leaderboard-note').textContent += ' Best Match can use HRRR here, so we don’t rank those two against each other.';
   if (data.metric === 'rain_in' && data.is_comparable && data.wet_hours === 0) {
     byId('leaderboard-note').textContent += ' Only dry hours have been compared so far; this doesn’t show how the forecasts handle rain.';
   }
@@ -263,7 +264,7 @@ function drawChart() {
   }
   empty.hidden = true;
   const historyNote = qualified ? 'Compared using the same station hours.'
-    : `Early results (provisional): ${points.length} matched ${points.length === 1 ? 'hour' : 'hours'}. Rankings need at least ${currentData.min_samples} of the same hours from two or more forecast sources.`;
+    : `Early results (provisional): ${points.length} matched ${points.length === 1 ? 'hour' : 'hours'}. Rankings need at least ${currentData.min_samples} of the same hours from two different forecast sources.`;
   note.textContent += ' ' + historyNote;
   const W = 960, H = 300, left = 54, right = 16, top = 20, bottom = 42;
   const all = points.flatMap(p => [p.actual, p.forecast]);
