@@ -101,7 +101,9 @@ function renderSnapshot() {
   }
   const unit = {temperature_f: '°F', humidity_pct: '%', wind_mph: 'mph', rain_in: 'in'}[metric];
   const digits = metric === 'rain_in' ? 3 : metric === 'humidity_pct' ? 0 : 1;
-  byId('snapshot-time').textContent = `${metric === 'rain_in' ? 'Station hour ending' : 'Station reading'} ${when(snapshot.observed_at)}${snapshot.forecast_at == null ? ' · No forecast hour is close enough to match.' : ` · Forecast for ${when(snapshot.forecast_at)}`}`;
+  const offset = snapshot.forecast_at == null ? null : Math.round(Math.abs(snapshot.forecast_at - snapshot.observed_at) / 60);
+  const timing = offset ? ` (${offset} ${offset === 1 ? 'minute' : 'minutes'} ${snapshot.forecast_at > snapshot.observed_at ? 'after' : 'before'} the reading)` : '';
+  byId('snapshot-time').textContent = `${metric === 'rain_in' ? 'Station hour ending' : 'Station reading'} ${when(snapshot.observed_at)}${snapshot.forecast_at == null ? ' · No forecast hour is close enough to match.' : ` · Forecast for ${when(snapshot.forecast_at)}${timing}`}`;
   const station = elt('div', null, 'snapshot-item');
   station.append(elt('span', 'Our station', 'subtle'), elt('strong', `${value(snapshot.station, digits)} ${unit}`));
   grid.append(station);

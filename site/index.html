@@ -7,7 +7,7 @@
   <title>Barefoot Weather · Firestone, Colorado</title>
   <meta name="description" content="Our family's weather station in Firestone, Colorado, with local readings and a look at how the forecasts compare." />
   <link rel="stylesheet" href="./style.css?v=903bb1c48c7f" />
-  <script src="./app.js?v=53a32e347b23" defer></script>
+  <script src="./app.js?v=5485dfff8bec" defer></script>
 </head>
 <body>
   <div class="shell">
@@ -31,12 +31,12 @@
       </section>
       <section class="board">
         <div class="section-heading">
-          <div><p class="eyebrow">A CLOSER LOOK</p><h2>Our station and the forecasts</h2><p class="subtle">The latest station reading with forecasts saved for the same time.</p></div>
+          <div><p class="eyebrow">A CLOSER LOOK</p><h2>Our station and the forecasts</h2><p class="subtle">The latest station reading with forecasts saved for the nearest hour.</p></div>
           <label class="source-picker">WEATHER<select id="snapshot-metric"><option value="temperature_f">Temperature</option><option value="humidity_pct">Humidity</option><option value="wind_mph">Wind speed</option><option value="rain_in">Hourly rainfall</option></select></label>
         </div>
         <p id="snapshot-time" class="note" aria-live="polite">Loading the latest comparison…</p>
         <div id="snapshot-values" class="snapshot-grid"></div>
-        <p class="note">A single reading is a snapshot. The results below show how forecasts compare over time.</p>
+        <p class="note">Forecast times can be up to 30 minutes before or after the station reading. This snapshot is separate from the stricter comparisons below.</p>
       </section>
       <section class="board">
         <div class="section-heading">
