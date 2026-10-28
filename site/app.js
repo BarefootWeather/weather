@@ -32,8 +32,10 @@ function healthCard(item) {
   const box = elt('div', null, 'health');
   const title = elt('div', null, 'health-title');
   title.append(elt('span', item.source));
-  const state = item.last_error ? 'UPDATE FAILED' : item.last_success_at != null ? 'LAST UPDATE OK' : 'WAITING FOR FIRST UPDATE';
-  title.append(elt('span', state, 'health-state' + (item.last_error ? ' error' : item.last_success_at == null ? ' pending' : '')));
+  const limit = item.source === 'Ecowitt WS90' ? 1200 : item.source === 'Rainfall history' ? 3600 : 8 * 3600;
+  const stale = item.last_success_at != null && Date.now() / 1000 - item.last_success_at > limit;
+  const state = item.last_error ? 'UPDATE FAILED' : item.last_success_at == null ? 'WAITING FOR FIRST UPDATE' : stale ? 'NO RECENT UPDATE' : 'LAST UPDATE OK';
+  title.append(elt('span', state, 'health-state' + (item.last_error ? ' error' : item.last_success_at == null ? ' pending' : stale ? ' stale' : '')));
   box.append(title, elt('div', `Last received: ${when(item.last_success_at)}`, 'health-time'));
   if (item.last_error) box.append(elt('div', 'We couldn’t get the latest update.', 'health-error'));
   return box;
@@ -84,7 +86,38 @@ async function loadStatus() {
   if (!s.configured.ecowitt && s.mode !== 'demo') health.prepend(elt('p', 'Our station connection hasn’t been set up yet.', 'health-error'));
   if (!s.configured.coordinates && s.mode !== 'demo') health.prepend(elt('p', 'The forecast location hasn’t been set up yet.', 'health-error'));
   updateSources();
+  renderSnapshot();
+  if (currentData) renderLeaderboard();
   drawChart();
+}
+function renderSnapshot() {
+  const grid = byId('snapshot-values');
+  grid.replaceChildren();
+  const metric = byId('snapshot-metric').value || 'temperature_f';
+  const snapshot = currentStatus?.snapshot?.[metric];
+  if (!currentStatus || !snapshot || snapshot.observed_at == null || snapshot.station == null) {
+    byId('snapshot-time').textContent = currentStatus ? 'We’re waiting for a station reading for this measurement.' : 'Loading the latest comparison…';
+    return;
+  }
+  const unit = {temperature_f: '°F', humidity_pct: '%', wind_mph: 'mph', rain_in: 'in'}[metric];
+  const digits = metric === 'rain_in' ? 3 : metric === 'humidity_pct' ? 0 : 1;
+  byId('snapshot-time').textContent = `${metric === 'rain_in' ? 'Station hour ending' : 'Station reading'} ${when(snapshot.observed_at)}${snapshot.forecast_at == null ? ' · No forecast hour is close enough to match.' : ` · Forecast for ${when(snapshot.forecast_at)}`}`;
+  const station = elt('div', null, 'snapshot-item');
+  station.append(elt('span', 'Our station', 'subtle'), elt('strong', `${value(snapshot.station, digits)} ${unit}`));
+  grid.append(station);
+  currentStatus.forecast_providers.forEach(provider => {
+    const box = elt('div', null, 'snapshot-item');
+    const forecast = snapshot.providers?.[provider];
+    box.append(elt('span', provider, 'subtle'));
+    if (forecast && Number.isFinite(forecast.value)) {
+      const difference = forecast.value - snapshot.station;
+      box.append(elt('strong', `${value(forecast.value, digits)} ${unit}`),
+        elt('div', `${difference >= 0 ? '+' : ''}${value(difference, digits)} ${unit} from station · saved ${when(forecast.issued_at)}`, 'subtle'));
+    } else {
+      box.append(elt('strong', '—'), elt('div', metric === 'rain_in' && provider === 'NWS' ? 'No rainfall amounts' : 'No matching forecast', 'subtle'));
+    }
+    grid.append(box);
+  });
 }
 function sourceHealth(provider) {
   return currentStatus?.sources.find(item => item.source === provider) || {};
@@ -161,41 +194,55 @@ async function loadComparison() {
   }
   byId('match-count').textContent = data.is_comparable ? `${data.matched_hours} hours compared` : 'Waiting for more matching hours';
   byId('mae-unit').textContent = `(${data.unit})`;
-  const body = byId('leaderboard');
-  body.replaceChildren();
-  if (!data.providers.length) {
-    const row = elt('tr');
-    const td = elt('td', `We’re building up some weather history. Rankings need at least ${data.min_samples} of the same hours to compare.`);
-    td.colSpan = 6;
-    row.append(td);
-    body.append(row);
-  }
-  data.providers.forEach(result => {
-    const row = elt('tr');
-    if (result.rank === 1) row.className = 'winner';
-    const digits = data.metric === 'rain_in' ? 3 : 2;
-    const values = [result.rank || '—', result.provider,
-      result.mae == null ? '—' : value(result.mae, digits),
-      result.bias == null ? '—' : (result.bias >= 0 ? '+' : '') + value(result.bias, digits),
-      result.rmse == null ? '—' : value(result.rmse, digits),
-      result.sample_count || `0 (${result.available_hours} available)`];
-    values.forEach((entry, i) => {
-      const cell = elt('td', entry);
-      if (i === 0) cell.className = result.rank ? 'rank' : 'neutral';
-      if (i === 3 && result.bias != null) cell.className = result.bias > 0 ? 'positive' : 'negative';
-      row.append(cell);
-    });
-    body.append(row);
-  });
+  renderLeaderboard();
   byId('leaderboard-note').textContent = data.is_comparable
-    ? `Based on ${data.matched_hours} of the same station hours. In “High / low”, + means the forecast was too high and − means too low. Short histories can change quickly.`
-    : `We need at least ${data.min_samples} matching hours from two or more forecast sources before ranking them. Each forecast is saved ahead of time, then checked against our station.`;
+    ? `Based on ${data.matched_hours} of the same station hours. Short histories can change quickly.`
+    : `Rankings need at least ${data.min_samples} matching hours from two different forecast sources. Each forecast is saved ahead of time, then checked against our station.`;
   byId('leaderboard-note').textContent += ' Best Match can use HRRR here, so we don’t rank those two against each other.';
   if (data.metric === 'rain_in' && data.is_comparable && data.wet_hours === 0) {
     byId('leaderboard-note').textContent += ' Only dry hours have been compared so far; this doesn’t show how the forecasts handle rain.';
   }
   updateSources();
   drawChart();
+}
+function renderLeaderboard() {
+  const data = currentData;
+  if (!data) return;
+  const body = byId('leaderboard');
+  const detail = byId('leaderboard-detail');
+  body.replaceChildren();
+  detail.replaceChildren();
+  const available = currentStatus?.forecast_providers;
+  const results = data.providers.filter(row => !available || available.includes(row.provider));
+  const names = [...(available || []), ...results.map(row => row.provider)];
+  const unique = [...new Set(names)];
+  const ordered = [...results.map(row => row.provider), ...unique.filter(name => !results.some(row => row.provider === name))];
+  if (!ordered.length) {
+    const row = elt('tr');
+    const td = elt('td', `We’re building up some weather history. Rankings need at least ${data.min_samples} of the same hours to compare.`);
+    td.colSpan = 4;
+    row.append(td);
+    body.append(row);
+  }
+  ordered.forEach(provider => {
+    const result = data.providers.find(row => row.provider === provider) || {provider, rank: null, mae: null, bias: null, rmse: null, sample_count: 0, available_hours: 0};
+    const row = elt('tr');
+    if (result.rank === 1) row.className = 'winner';
+    const digits = data.metric === 'rain_in' ? 3 : 2;
+    const hours = result.sample_count || (data.unsupported_providers?.includes(provider) ? 'No rainfall amounts' :
+      sourceHealth(provider).last_error ? 'Update failed' : result.available_hours ? `${result.available_hours} matched · not ranked` : 'Waiting for matches');
+    const values = [result.rank || '—', result.provider, result.mae == null ? '—' : value(result.mae, digits), hours];
+    values.forEach((entry, i) => {
+      const cell = elt('td', entry);
+      if (i === 0) cell.className = result.rank ? 'rank' : 'neutral';
+      row.append(cell);
+    });
+    body.append(row);
+    const extra = elt('tr');
+    [result.provider, result.bias == null ? '—' : (result.bias >= 0 ? '+' : '') + value(result.bias, digits),
+      result.rmse == null ? '—' : value(result.rmse, digits)].forEach(entry => extra.append(elt('td', entry)));
+    detail.append(extra);
+  });
 }
 function svg(tag, attrs, content) {
   const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -279,14 +326,15 @@ function drawChart() {
     chart.append(svg('line', {x1:left,y1:py,x2:W-right,y2:py,stroke:'#293c4b','stroke-width':1}));
     chart.append(svg('text', {x:left-12,y:py+4,fill:'#8297a8','font-size':12,'text-anchor':'end'}, (max-(max-min)*i/4).toFixed(rainfall ? 3 : 1)));
   }
-  const path = accessor => points.map((p,i) => (i?'L':'M')+x(p).toFixed(1)+','+y(accessor(p)).toFixed(1)).join(' ');
+  const path = accessor => points.map((p,i) => (i && p.valid_at - points[i-1].valid_at <= 3600 ? 'L' : 'M')+x(p).toFixed(1)+','+y(accessor(p)).toFixed(1)).join(' ');
   if (points.length > 1) {
     chart.append(svg('path', {d:path(p => p.actual),fill:'none',stroke:'#66d8c0','stroke-width':2.6,'stroke-linejoin':'round'}));
     chart.append(svg('path', {d:path(p => p.forecast),fill:'none',stroke:'#8aa4ff','stroke-width':2.4,'stroke-dasharray':'6 3','stroke-linejoin':'round'}));
-  } else {
-    chart.append(svg('circle', {cx:x(points[0]),cy:y(points[0].actual),r:4,fill:'#66d8c0'}));
-    chart.append(svg('circle', {cx:x(points[0]),cy:y(points[0].forecast),r:4,fill:'#8aa4ff'}));
   }
+  points.forEach(p => {
+    chart.append(svg('circle', {cx:x(p),cy:y(p.actual),r:3,fill:'#66d8c0'}));
+    chart.append(svg('circle', {cx:x(p),cy:y(p.forecast),r:3,fill:'#8aa4ff'}));
+  });
   [...new Set([0, Math.floor((points.length-1)/2), points.length-1])].forEach(i => {
     chart.append(svg('text', {x:x(points[i]), y:H-12,fill:'#8297a8','font-size':12,'text-anchor':i===0?'start':i===points.length-1?'end':'middle'}, when(points[i].valid_at)));
   });
@@ -294,7 +342,15 @@ function drawChart() {
 async function refresh() {
   await Promise.all([loadStatus(), loadComparison()]);
 }
-controls.forEach(id => byId(id).addEventListener('change', loadComparison));
+controls.forEach(id => byId(id).addEventListener('change', () => {
+  if (id === 'metric') { byId('snapshot-metric').value = byId('metric').value; renderSnapshot(); }
+  return loadComparison();
+}));
+byId('snapshot-metric').addEventListener('change', () => {
+  byId('metric').value = byId('snapshot-metric').value;
+  renderSnapshot();
+  return loadComparison();
+});
 byId('source').addEventListener('change', e => { selectedSource = e.target.value; drawChart(); });
 refresh();
 setInterval(refresh, 120000);
