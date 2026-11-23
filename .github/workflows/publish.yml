@@ -3,7 +3,7 @@ name: Collect weather and publish public dashboard
 on:
   workflow_dispatch:
   schedule:
-    - cron: '7,22,37,52 * * * *'
+    - cron: '11,26,41,56 * * * *'
   push:
     branches: [main]
     paths: ['.github/workflows/publish.yml']
@@ -23,10 +23,10 @@ jobs:
     # This workflow belongs in the public site repo, never the private source repo.
     if: github.event.repository.private == false && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url || steps.deployment_final.outputs.page_url }}
     steps:
       - name: Check out public site
         uses: actions/checkout@v6
@@ -39,7 +39,7 @@ jobs:
           SOURCE_REPOSITORY: ${{ vars.SOURCE_REPOSITORY }}
         run: |
           python - <<'PY'
-          import os, re, urllib.error, urllib.request
+          import os, re, time, urllib.error, urllib.request
           source = os.environ.get('SOURCE_REPOSITORY', '')
           if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+', source):
               raise SystemExit('Set SOURCE_REPOSITORY to the private owner/repository.')
@@ -50,13 +50,27 @@ jobs:
           # An unauthenticated request must not expose the source repository.
           request = urllib.request.Request('https://api.github.com/repos/' + source,
                                            headers={'Accept': 'application/vnd.github+json'})
-          try:
-              urllib.request.urlopen(request, timeout=25).close()
-          except urllib.error.HTTPError as error:
-              if error.code != 404:
-                  raise SystemExit('Could not establish source repository privacy.') from None
+          # A shared runner can hit anonymous API rate limits or transient GitHub
+          # errors. Retry those failures, but never publish without an actual 404.
+          for attempt, delay in enumerate((0, 5, 15, 30)):
+              if delay:
+                  time.sleep(delay)
+              try:
+                  urllib.request.urlopen(request, timeout=15).close()
+              except urllib.error.HTTPError as error:
+                  status = error.code
+                  error.close()
+                  if status == 404:
+                      break
+                  if status not in (403, 408, 429, 500, 502, 503, 504):
+                      raise SystemExit('Could not establish source repository privacy.') from None
+              except (urllib.error.URLError, TimeoutError, OSError):
+                  pass
+              else:
+                  raise SystemExit('Source repository is public; publication stopped.')
+              print(f'Privacy check temporarily unavailable (attempt {attempt + 1}/4).')
           else:
-              raise SystemExit('Source repository is public; publication stopped.')
+              raise SystemExit('Could not establish source repository privacy after retries.')
           PY
 
       - name: Check out private collector and history
@@ -92,6 +106,7 @@ jobs:
           NWS_CONTACT: ${{ secrets.NWS_CONTACT }}
           SITE_NAME: Firestone, Colorado
           DB_PATH: data/weather.sqlite3
+          OBS_INTERVAL_MINUTES: '15'
         run: |
           if ! python -m scripts.collect_and_build > "$RUNNER_TEMP/collector-build.log" 2>&1; then
             echo 'Weather collection or export failed. Private diagnostics were not published.'
@@ -139,4 +154,30 @@ jobs:
 
       - name: Deploy public site
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4
+        with:
+          timeout: '180000'
+
+      - name: Wait before retrying Pages deployment
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 10
+
+      - name: Retry Pages deployment
+        if: steps.deployment.outcome == 'failure'
+        id: deployment_retry
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+        with:
+          timeout: '180000'
+
+      - name: Wait before final Pages deployment attempt
+        if: steps.deployment_retry.outcome == 'failure'
+        run: sleep 30
+
+      - name: Final Pages deployment attempt
+        if: steps.deployment_retry.outcome == 'failure'
+        id: deployment_final
+        uses: actions/deploy-pages@v4
+        with:
+          timeout: '180000'
